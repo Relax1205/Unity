@@ -1,0 +1,238 @@
+CharacterBase.cs
+using UnityEngine;
+
+
+public abstract class CharacterBase : MonoBehaviour
+{
+    [Header("Base Stats")]
+    public float moveSpeed = 5f;
+    public int health = 100;
+
+    public virtual void Move(Vector3 direction)
+    {
+        transform.Translate(direction * moveSpeed * Time.deltaTime);
+    }
+
+    public void TakeDamage(int damage)
+    {
+        health -= damage;
+        if (health <= 0)
+        {
+            Die();
+        }
+    }
+
+    public abstract void Die();
+}
+
+CharacterBase.cs.meta
+fileFormatVersion: 2
+guid: 0cbc90cbf6331fa44b471490d5a21c25
+
+GameManager.cs
+using UnityEngine;
+
+
+public class GameManager : MonoBehaviour
+{
+    [Header("Settings")]
+    public GameObject ghostPrefab;
+    public int maxGhosts = 5;
+    public float spawnRange = 10f;
+
+    void Start()
+    {
+        for (int i = 0; i < maxGhosts; i++)
+        {
+            SpawnGhost();
+        }
+    }
+
+    void SpawnGhost()
+    {
+        Vector3 randomPos = new Vector3(
+            Random.Range(-spawnRange, spawnRange),
+            1f,
+            Random.Range(-spawnRange, spawnRange)
+        );
+
+        Instantiate(ghostPrefab, randomPos, Quaternion.identity);
+    }
+}
+
+GameManager.cs.meta
+fileFormatVersion: 2
+guid: f302e1d7f85a34e45b898c725ed079ac
+
+Ghost.cs
+using UnityEngine;
+
+public class Ghost : CharacterBase
+{
+    public float floatHeight = 0.5f;
+    public float floatSpeed = 2f;
+    
+    private Vector3 startPos;
+    private bool isVacuumed = false;
+
+    void Start()
+    {
+        startPos = transform.position;
+    }
+
+    public override void Move(Vector3 direction)
+    {
+        base.Move(direction);
+        float newY = startPos.y + Mathf.Sin(Time.time * floatSpeed) * floatHeight;
+        transform.position = new Vector3(transform.position.x, newY, transform.position.z);
+    }
+
+    public void GetVacuumed(Transform playerPos)
+    {
+        isVacuumed = true;
+        Vector3 dir = (playerPos.position - transform.position).normalized;
+        transform.Translate(dir * (moveSpeed * 2) * Time.deltaTime);
+    }
+
+    public override void Die()
+    {
+        Debug.Log("Призрак пойман!");
+        Destroy(gameObject);
+    }
+
+    void Update()
+    {
+        if (!isVacuumed)
+        {
+            Move(new Vector3(Mathf.Sin(Time.time), 0, Mathf.Cos(Time.time)) * 0.5f);
+        }
+    }
+}
+
+Ghost.cs.meta
+fileFormatVersion: 2
+guid: 6cd4a86681432524ba432ee700e358c9
+
+ObstacleGenerator.cs
+using UnityEngine;
+
+public class ObstacleGenerator : MonoBehaviour
+{
+    [Header("Settings")]
+    public GameObject obstaclePrefab;
+    public int maxObstacles = 5;
+    public float spawnRange = 10f;
+    public float spawnHeight = 0f;
+
+    void Start()
+    {
+        if (obstaclePrefab == null)
+        {
+            Debug.LogWarning("ObstacleGenerator: Не назначен obstaclePrefab!");
+            return;
+        }
+        GenerateObstacles();
+    }
+
+    void GenerateObstacles()
+    {
+        for (int i = 0; i < maxObstacles; i++)
+        {
+            SpawnObstacle();
+        }
+    }
+
+    void SpawnObstacle()
+    {
+        Vector3 randomPos = new Vector3(
+            Random.Range(-spawnRange, spawnRange),
+            spawnHeight,
+            Random.Range(-spawnRange, spawnRange)
+        );
+
+        Instantiate(obstaclePrefab, randomPos, Quaternion.identity);
+    }
+}
+
+ObstacleGenerator.cs.meta
+fileFormatVersion: 2
+guid: 9fa681730f8bc974e803657cecf54745
+
+PlayerController.cs
+using UnityEngine;
+public class PlayerController : CharacterBase
+{
+    private Camera mainCamera;
+
+    void Start()
+    {
+        mainCamera = Camera.main;
+        mainCamera.transform.position = transform.position + new Vector3(0, 5, -5);
+        mainCamera.transform.LookAt(transform.position);
+    }
+
+    public override void Move(Vector3 direction)
+    {
+        float h = Input.GetAxis("Horizontal");
+        float v = Input.GetAxis("Vertical");
+
+        Vector3 move = new Vector3(h, 0, v);
+        base.Move(move);
+    }
+
+    public override void Die()
+    {
+        Debug.Log("Игрок погиб!");
+    }
+
+    void Update()
+    {
+        Move(Vector3.zero);
+
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            UseVacuum();
+        }
+    }
+
+    void UseVacuum()
+    {
+        Debug.Log("Пылесос включен.");
+        
+        Collider[] hits = Physics.OverlapSphere(transform.position, 5f);
+
+        foreach (Collider hit in hits)
+        {
+            Ghost ghost = hit.GetComponent<Ghost>();
+            if (ghost != null)
+            {
+                ghost.GetVacuumed(transform);
+                Invoke("DestroyGhost", 0.5f); 
+            }
+        }
+    }
+
+    void DestroyGhost()
+    {
+        Collider[] hits = Physics.OverlapSphere(transform.position, 5f);
+        foreach (Collider hit in hits)
+        {
+            Ghost ghost = hit.GetComponent<Ghost>();
+            if (ghost != null)
+            {
+                ghost.TakeDamage(100);
+            }
+        }
+    }
+    
+    void OnDrawGizmosSelected()
+    {
+        Gizmos.color = Color.blue;
+        Gizmos.DrawWireSphere(transform.position, 5f);
+    }
+}
+
+PlayerController.cs.meta
+fileFormatVersion: 2
+guid: ec957e54f8d8b10468f94369079f30ac
+
