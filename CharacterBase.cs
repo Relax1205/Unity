@@ -27,10 +27,8 @@ public abstract class CharacterBase : MonoBehaviour
 
     public virtual void TakeDamage(int damage)
     {
-        // === ЗАЩИТА ОТ ОТРИЦАТЕЛЬНОГО ЗДОРОВЬЯ ===
         health -= damage;
         
-        // Не даем здоровью упасть ниже 0
         if (health < 0)
         {
             health = 0;
@@ -38,7 +36,6 @@ public abstract class CharacterBase : MonoBehaviour
         
         Debug.Log($"{gameObject.name} получил урон: {damage}. Осталось здоровья: {health}");
         
-        // === СМЕРТЬ ПРИ 0 ЗДОРОВЬЯ ===
         if (health <= 0)
         {
             Die();

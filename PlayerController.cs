@@ -8,7 +8,6 @@ public class PlayerController : CharacterBase
     public float mouseSensitivity = 2f;
 
     [Header("Physics")]
-    // === УДАЛЕНО: private Rigidbody rb; (уже есть в CharacterBase) ===
     private float xRotation = 0f;
     private bool isGameActive = true;
 
@@ -18,10 +17,8 @@ public class PlayerController : CharacterBase
 
     void Start()
     {
-        // rb уже инициализирован в CharacterBase.Awake()
         rb.freezeRotation = true;
 
-        // Увеличиваем скорость
         moveSpeed = 8f;
 
         if (cameraTransform == null)
@@ -38,40 +35,32 @@ public class PlayerController : CharacterBase
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
 
-        // Инициализация UI здоровья
         if (UIManager.Instance != null)
         {
             UIManager.Instance.UpdateHealth(health, 100);
         }
     }
 
-    // Движение относительно камеры + СПРИНТ
     public override void Move(Vector3 direction)
     {
         if (!isGameActive) return;
 
-        float h = Input.GetAxis("Horizontal");  // A/D
-        float v = Input.GetAxis("Vertical");    // W/S
+        float h = Input.GetAxis("Horizontal");
+        float v = Input.GetAxis("Vertical");
 
-        // Проверка спринта (Left Shift)
         isSprinting = Input.GetKey(KeyCode.LeftShift);
 
-        // Получаем направление камеры (только по горизонтали)
         Vector3 forward = cameraTransform.forward;
         Vector3 right = cameraTransform.right;
 
-        // Убираем вертикальную составляющую
         forward.y = 0f;
         right.y = 0f;
 
-        // Нормализуем векторы
         forward.Normalize();
         right.Normalize();
 
-        // Вычисляем направление движения относительно камеры
         Vector3 moveDirection = (forward * v + right * h).normalized;
 
-        // Применяем множитель спринта
         float currentSpeed = isSprinting ? moveSpeed * sprintMultiplier : moveSpeed;
 
         if (rb != null)

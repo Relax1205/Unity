@@ -1,5 +1,5 @@
 using UnityEngine;
-using UnityEngine.AI; // Для NavMeshAgent
+using UnityEngine.AI;
 
 public class Ghost : CharacterBase
 {
@@ -15,17 +15,15 @@ public class Ghost : CharacterBase
     private Vector3 startPos;
     private bool isVacuumed = false;
     private Transform player;
-    private NavMeshAgent navAgent; // Ссылка на агент
+    private NavMeshAgent navAgent;
 
     void Start()
     {
-        // === ДОБАВЛЕНО: Отключаем NavMeshAgent ===
         navAgent = GetComponent<NavMeshAgent>();
         if (navAgent != null)
         {
-            navAgent.enabled = false; // Отключаем чтобы не было ошибки
+            navAgent.enabled = false;
         }
-        // ==========================================
 
         startPos = transform.position;
         GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
