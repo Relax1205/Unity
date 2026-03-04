@@ -8,8 +8,8 @@ public class Ghost : CharacterBase
     public float detectRange = 5f;
     public float attackRange = 1.5f;
     
-    [Header("VFX")]
-    public ParticleSystem deathParticlePrefab;
+    // ❌ УДАЛЕНО: [Header("VFX")]
+    // ❌ УДАЛЕНО: public ParticleSystem deathParticlePrefab;
     
     private Vector3 startPos;
     private bool isVacuumed = false;
@@ -48,14 +48,9 @@ public class Ghost : CharacterBase
     public override void Die()
     {
         Debug.Log("👻 Призрак поглощён!");
-        
         isVacuumed = true;
         
-        // Частицы
-        if (deathParticlePrefab != null)
-        {
-            Instantiate(deathParticlePrefab, transform.position, Quaternion.identity);
-        }
+        // ❌ УДАЛЕНО: Частицы (Instantiate deathParticlePrefab)
         
         // Звук
         if (AudioManager.Instance != null)
@@ -69,8 +64,8 @@ public class Ghost : CharacterBase
             GameManager.Instance.OnGhostCaught();
         }
         
-        // Удаляем объект
-        Destroy(gameObject, 1.5f);
+        // Удаляем объект мгновенно
+        Destroy(gameObject);
     }
     
     void Update()
