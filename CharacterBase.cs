@@ -7,8 +7,6 @@ public abstract class CharacterBase : MonoBehaviour
     public int health = 100;
     public int maxHealth = 100;
     
-    // ❌ УДАЛЕНО: public AnimatorSystem animator;
-    
     protected Rigidbody rb;
     
     void Awake()
@@ -31,10 +29,7 @@ public abstract class CharacterBase : MonoBehaviour
     public virtual void TakeDamage(int damage)
     {
         health -= damage;
-        if (health < 0)
-        {
-            health = 0;
-        }
+        if (health < 0) health = 0;
         
         if (health <= 0)
         {
