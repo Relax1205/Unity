@@ -6,7 +6,7 @@ public class GameData : MonoBehaviour
     
     public int highScore = 0;
     public int lastScore = 0;
-
+    
     void Awake()
     {
         if (Instance == null)
@@ -19,7 +19,7 @@ public class GameData : MonoBehaviour
             Destroy(gameObject);
         }
     }
-
+    
     public void SetScore(int score)
     {
         lastScore = score;

@@ -7,7 +7,7 @@ public class ObstacleGenerator : MonoBehaviour
     public int maxObstacles = 5;
     public float spawnRange = 10f;
     public float spawnHeight = 0f;
-
+    
     void Start()
     {
         if (obstaclePrefab == null)
@@ -17,7 +17,7 @@ public class ObstacleGenerator : MonoBehaviour
         }
         GenerateObstacles();
     }
-
+    
     void GenerateObstacles()
     {
         for (int i = 0; i < maxObstacles; i++)
@@ -25,7 +25,7 @@ public class ObstacleGenerator : MonoBehaviour
             SpawnObstacle();
         }
     }
-
+    
     void SpawnObstacle()
     {
         Vector3 randomPos = new Vector3(
@@ -33,7 +33,6 @@ public class ObstacleGenerator : MonoBehaviour
             spawnHeight,
             Random.Range(-spawnRange, spawnRange)
         );
-
         Instantiate(obstaclePrefab, randomPos, Quaternion.identity);
     }
 }

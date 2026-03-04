@@ -3,17 +3,17 @@ using UnityEngine;
 public class GameManager : MonoBehaviour
 {
     public static GameManager Instance;
-
+    
     [Header("Settings")]
     public GameObject ghostPrefab;
     public int maxGhosts = 5;
     public float spawnRange = 30f;
-
+    
     [Header("Game State")]
     public int score = 0;
     public int ghostsCaught = 0;
     private bool gameActive = true;
-
+    
     void Awake()
     {
         if (Instance == null)
@@ -25,16 +25,21 @@ public class GameManager : MonoBehaviour
             Destroy(gameObject);
         }
     }
-
+    
     void Start()
     {
         score = 0;
         ghostsCaught = 0;
         gameActive = true;
         
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlayGameMusic();
+        }
+        
         Invoke("SpawnAllGhosts", 1f);
     }
-
+    
     void SpawnAllGhosts()
     {
         for (int i = 0; i < maxGhosts; i++)
@@ -42,7 +47,7 @@ public class GameManager : MonoBehaviour
             SpawnGhost();
         }
     }
-
+    
     void SpawnGhost()
     {
         Vector3 randomPos = new Vector3(
@@ -52,27 +57,26 @@ public class GameManager : MonoBehaviour
         );
         Instantiate(ghostPrefab, randomPos, Quaternion.identity);
     }
-
+    
     public void OnGhostCaught()
     {
         if (!gameActive) return;
-
+        
         ghostsCaught++;
         score++;
-
         Debug.Log($"Призрак пойман! Счет: {score}/{maxGhosts}");
-
+        
         if (UIManager.Instance != null)
         {
             UIManager.Instance.UpdateScore(score);
         }
-
+        
         if (ghostsCaught >= maxGhosts)
         {
             Victory();
         }
     }
-
+    
     void Victory()
     {
         gameActive = false;
