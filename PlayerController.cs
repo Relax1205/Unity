@@ -1,6 +1,8 @@
 using UnityEngine;
+using Photon.Pun;
+
 [RequireComponent(typeof(Rigidbody))]
-public class PlayerController : CharacterBase
+public class PlayerController : CharacterBase, IPunObservable
 {
     [Header("Camera Settings")]
     public Transform cameraTransform;
@@ -33,15 +35,24 @@ public class PlayerController : CharacterBase
     public GameObject vacuumParticlePrefab;
     private ParticleSystem activeVacuumVFX;
 
-    // ✅ ДОБАВЛЕНО: Для системы Animator
     [Header("Animator System")]
     public Animator animator;
 
-    void Start()
+    // ✅ СЕТЕВЫЕ КОМПОНЕНТЫ PHOTON PUN
+    private PhotonView photonView;
+    private bool isLocalPlayer = false;
+
+   void Start()
     {
         rb.freezeRotation = true;
         moveSpeed = 8f;
+
+        // ✅ ПОЛУЧАЕМ PhotonView компонент
+        photonView = GetComponent<PhotonView>();
         
+        // ✅ ПРОВЕРЯЕМ: является ли этот игрок локальным
+        isLocalPlayer = photonView.IsMine;
+
         // ✅ ИНИЦИАЛИЗАЦИЯ ANIMATOR
         if (animator == null)
         {
@@ -52,42 +63,104 @@ public class PlayerController : CharacterBase
         {
             cameraTransform = Camera.main.transform;
         }
-        cameraTransform.SetParent(transform);
-        cameraTransform.localPosition = new Vector3(0, 1f, 0);
-        transform.rotation = Quaternion.identity;
-        cameraTransform.localRotation = Quaternion.identity;
-        xRotation = 0f;
-        Cursor.lockState = CursorLockMode.Locked;
-        Cursor.visible = false;
+
+        // ✅ КАМЕРУ прикрепляем ТОЛЬКО к локальному игроку
+        if (isLocalPlayer)
+        {
+            cameraTransform.SetParent(transform);
+            cameraTransform.localPosition = new Vector3(0, 1f, 0);
+            transform.rotation = Quaternion.identity;
+            cameraTransform.localRotation = Quaternion.identity;
+            xRotation = 0f;
+            
+            // ✅ ИЗМЕНЕНО: Не блокируем курсор сразу!
+            // Курсор будет заблокирован только в GameScene
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+        }
+        else
+        {
+            // ✅ Для удалённых игроков: отключаем камеру и освобождаем курсор
+            if (Camera.main != null)
+            {
+                Camera.main.enabled = false;
+            }
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+            
+            // ✅ Удалённые игроки не управляют физикой напрямую
+            if (rb != null)
+            {
+                rb.isKinematic = true;
+            }
+        }
+
         groundLayer = LayerMask.GetMask("Ground", "Default");
-        if (UIManager.Instance != null)
+
+        // ✅ UI обновляем только для локального игрока
+        if (UIManager.Instance != null && isLocalPlayer)
         {
             UIManager.Instance.UpdateHealth(health, 100);
         }
     }
 
+    // ✅ СИНХРОНИЗАЦИЯ ДАННЫХ МЕЖДУ КЛИЕНТАМИ (IPunObservable)
+    public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
+    {
+        if (stream.IsWriting)
+        {
+            // 📤 ОТПРАВКА данных (только для локального игрока)
+            Vector3 pos = transform.position;
+            Quaternion rot = transform.rotation;
+            float healthValue = health;
+            bool vacuumActive = isVacuumActive;
+
+            stream.SendNext(pos);
+            stream.SendNext(rot);
+            stream.SendNext(healthValue);
+            stream.SendNext(vacuumActive);
+        }
+        else
+        {
+            // 📥 ПОЛУЧЕНИЕ данных (только для удалённых игроков)
+            Vector3 pos = (Vector3)stream.ReceiveNext();
+            Quaternion rot = (Quaternion)stream.ReceiveNext();
+            float healthValue = (float)stream.ReceiveNext();
+            bool vacuumActive = (bool)stream.ReceiveNext();
+
+            // ✅ Интерполяция для плавности
+            if (!isLocalPlayer)
+            {
+                transform.position = Vector3.Lerp(transform.position, pos, Time.deltaTime * 10);
+                transform.rotation = Quaternion.Lerp(transform.rotation, rot, Time.deltaTime * 10);
+                health = (int)healthValue;
+                isVacuumActive = vacuumActive;
+            }
+        }
+    }
+
+    // ✅ ДВИЖЕНИЕ ТОЛЬКО ДЛЯ ЛОКАЛЬНОГО ИГРОКА
     public override void Move(Vector3 direction)
     {
-        if (!isGameActive) return;
-        
+        if (!isGameActive || !isLocalPlayer) return;
+
         float h = Input.GetAxis("Horizontal");
         float v = Input.GetAxis("Vertical");
         isSprinting = Input.GetKey(KeyCode.LeftShift);
-        
+
         Vector3 forward = cameraTransform.forward;
         Vector3 right = cameraTransform.right;
         forward.y = 0f;
         right.y = 0f;
         forward.Normalize();
         right.Normalize();
-        
+
         Vector3 moveDirection = (forward * v + right * h).normalized;
         float currentSpeed = isSprinting ? moveSpeed * sprintMultiplier : moveSpeed;
 
-        // ✅ АНИМАЦИЯ ANIMATOR: Передаем скорость движения
+        // ✅ АНИМАЦИЯ ANIMATOR
         if (animator != null)
         {
-            // Параметр "Speed" должен быть создан в Animator Controller (Float)
             animator.SetFloat("Speed", moveDirection.magnitude * currentSpeed);
         }
 
@@ -103,8 +176,8 @@ public class PlayerController : CharacterBase
 
     void Update()
     {
-        if (!isGameActive) return;
-        
+        if (!isGameActive || !isLocalPlayer) return;
+
         HandleCameraRotation();
         Move(Vector3.zero);
         CheckGround();
@@ -161,6 +234,7 @@ public class PlayerController : CharacterBase
     {
         float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity;
         float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity;
+
         transform.Rotate(Vector3.up * mouseX);
         xRotation -= mouseY;
         xRotation = Mathf.Clamp(xRotation, -90f, 90f);
@@ -169,12 +243,10 @@ public class PlayerController : CharacterBase
 
     void StartVacuum()
     {
-        // ✅ АНИМАЦИЯ ANIMATOR: Запуск состояния пылесоса
         if (animator != null)
         {
             animator.SetBool("IsVacuuming", true);
         }
-
         if (AudioManager.Instance != null)
         {
             AudioManager.Instance.StartVacuumSound();
@@ -194,12 +266,10 @@ public class PlayerController : CharacterBase
 
     void StopVacuum()
     {
-        // ✅ АНИМАЦИЯ ANIMATOR: Остановка состояния пылесоса
         if (animator != null)
         {
             animator.SetBool("IsVacuuming", false);
         }
-
         if (AudioManager.Instance != null)
         {
             AudioManager.Instance.StopVacuumSound();
@@ -245,24 +315,42 @@ public class PlayerController : CharacterBase
         destroyScheduled = false;
     }
 
+    // ✅ СЕТЕВОЙ ВЫЗОВ ДЛЯ ПОЛУЧЕНИЯ УРОНА (RPC)
+    [PunRPC]
+    public void TakeDamageRPC(int damage)
+    {
+        TakeDamage(damage);
+    }
+
+    // ✅ TAKEDEAMAGE С СЕТЕВЫМ ВЫЗОВОМ
     public override void TakeDamage(int damage)
     {
-        base.TakeDamage(damage);
-        if (hitParticlePrefab != null)
+        if (photonView.IsMine)
         {
-            Instantiate(hitParticlePrefab, transform.position, Quaternion.identity);
+            // ✅ Локальный игрок получает урон напрямую
+            base.TakeDamage(damage);
+
+            if (hitParticlePrefab != null)
+            {
+                Instantiate(hitParticlePrefab, transform.position, Quaternion.identity);
+            }
+            if (AudioManager.Instance != null)
+            {
+                AudioManager.Instance.PlayHitSound();
+            }
+            if (UIManager.Instance != null)
+            {
+                UIManager.Instance.UpdateHealth(health, 100);
+            }
+            if (health <= 0)
+            {
+                GameOver();
+            }
         }
-        if (AudioManager.Instance != null)
+        else
         {
-            AudioManager.Instance.PlayHitSound();
-        }
-        if (UIManager.Instance != null)
-        {
-            UIManager.Instance.UpdateHealth(health, 100);
-        }
-        if (health <= 0)
-        {
-            GameOver();
+            // ✅ Удалённый игрок - вызываем RPC для всех клиентов
+            photonView.RPC("TakeDamageRPC", RpcTarget.All, damage);
         }
     }
 

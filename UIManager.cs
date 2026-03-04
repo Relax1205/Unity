@@ -142,10 +142,11 @@ public class UIManager : MonoBehaviour
     {
         // ЗВУК: Клик кнопки
         if (AudioManager.Instance != null) AudioManager.Instance.PlayClickSound();
-        
         Debug.Log("🎮 UIManager: StartGame called");
         Time.timeScale = 1f;
         HideAllPanels();
+        
+        // ✅ БЛОКИРУЕМ КУРСОР ПРИ СТАРТЕ ИГРЫ
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
         

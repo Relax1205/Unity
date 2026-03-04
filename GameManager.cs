@@ -1,6 +1,7 @@
 using UnityEngine;
+using Photon.Pun;
 
-public class GameManager : MonoBehaviour
+public class GameManager : MonoBehaviourPun
 {
     public static GameManager Instance;
     
@@ -19,6 +20,7 @@ public class GameManager : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
+            DontDestroyOnLoad(gameObject);
         }
         else
         {
@@ -28,16 +30,42 @@ public class GameManager : MonoBehaviour
     
     void Start()
     {
-        score = 0;
-        ghostsCaught = 0;
-        gameActive = true;
-        
-        if (AudioManager.Instance != null)
+            // ✅ ПРОВЕРКА ПРЕФАБА
+        if (ghostPrefab == null)
         {
-            AudioManager.Instance.PlayGameMusic();
+            Debug.LogError("❌ ОШИБКА: Ghost Prefab не назначен!");
+            return;
         }
         
-        Invoke("SpawnAllGhosts", 1f);
+        Debug.Log($"✅ Ghost Prefab назначен: {ghostPrefab.name}");
+        
+        PhotonView pv = ghostPrefab.GetComponent<PhotonView>();
+        if (pv == null)
+        {
+            Debug.LogError($"❌ ОШИБКА: Нет PhotonView на {ghostPrefab.name}!");
+        }
+        else
+        {
+            Debug.Log($"✅ PhotonView найден на {ghostPrefab.name}");
+        }
+    
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
+        Debug.Log("🎮 GameplayCursor: Курсор заблокирован");
+        // Только хост инициализирует игру
+        if (PhotonNetwork.IsMasterClient)
+        {
+            score = 0;
+            ghostsCaught = 0;
+            gameActive = true;
+            
+            if (AudioManager.Instance != null)
+            {
+                AudioManager.Instance.PlayGameMusic();
+            }
+            
+            Invoke("SpawnAllGhosts", 1f);
+        }
     }
     
     void SpawnAllGhosts()
@@ -50,18 +78,38 @@ public class GameManager : MonoBehaviour
     
     void SpawnGhost()
     {
+        // ✅ ПРОВЕРКА: Существует ли префаб
+        if (ghostPrefab == null)
+        {
+            Debug.LogError("❌ ОШИБКА: ghostPrefab не назначен в GameManager!");
+            return;
+        }
+        
+        // ✅ ПРОВЕРКА: Есть ли PhotonView на префабе
+        PhotonView pv = ghostPrefab.GetComponent<PhotonView>();
+        if (pv == null)
+        {
+            Debug.LogError($"❌ ОШИБКА: У префаба {ghostPrefab.name} нет компонента PhotonView!");
+            Debug.LogError("📁 Добавьте PhotonView на префаб Ghost в Resources!");
+            return;
+        }
+        
         Vector3 randomPos = new Vector3(
             Random.Range(-spawnRange, spawnRange),
             1f,
             Random.Range(-spawnRange, spawnRange)
         );
-        Instantiate(ghostPrefab, randomPos, Quaternion.identity);
+        
+        // ✅ Сетевой инстанс призрака (используем имя префаба)
+        PhotonNetwork.Instantiate(ghostPrefab.name, randomPos, Quaternion.identity, 0);
+        
+        Debug.Log($"👻 Призрак создан: {ghostPrefab.name} в позиции {randomPos}");
     }
     
-    public void OnGhostCaught()
+    [PunRPC]
+    public void OnGhostCaughtRPC()
     {
         if (!gameActive) return;
-        
         ghostsCaught++;
         score++;
         Debug.Log($"Призрак пойман! Счет: {score}/{maxGhosts}");
@@ -73,11 +121,25 @@ public class GameManager : MonoBehaviour
         
         if (ghostsCaught >= maxGhosts)
         {
-            Victory();
+            VictoryRPC();
         }
     }
     
-    void Victory()
+    public void OnGhostCaught()
+    {
+        if (photonView != null)
+        {
+            photonView.RPC("OnGhostCaughtRPC", RpcTarget.All);
+        }
+        else
+        {
+            // Если нет photonView, вызываем локально
+            OnGhostCaughtRPC();
+        }
+    }
+    
+    [PunRPC]
+    void VictoryRPC()
     {
         gameActive = false;
         Debug.Log("Победа! Все призраки пойманы.");
@@ -86,10 +148,17 @@ public class GameManager : MonoBehaviour
         {
             GameData.Instance.SetScore(score);
         }
-        
         if (UIManager.Instance != null)
         {
             UIManager.Instance.ShowVictory();
+        }
+    }
+    
+    void Victory()
+    {
+        if (photonView != null)
+        {
+            photonView.RPC("VictoryRPC", RpcTarget.All);
         }
     }
 }
