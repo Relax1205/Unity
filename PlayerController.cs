@@ -1,5 +1,4 @@
 using UnityEngine;
-
 [RequireComponent(typeof(Rigidbody))]
 public class PlayerController : CharacterBase
 {
@@ -9,7 +8,7 @@ public class PlayerController : CharacterBase
 
     [Header("Physics")]
     private float xRotation = 0f;
-    private bool isGameActive = true;  // ✅ ДОБАВЛЕНО: Поле было удалено
+    private bool isGameActive = true;
 
     [Header("Movement Settings")]
     public float sprintMultiplier = 2f;
@@ -23,8 +22,8 @@ public class PlayerController : CharacterBase
     public float jumpForce = 5f;
     public float sprintJumpForce = 8f;
     public float groundCheckDistance = 0.2f;
-    public int maxJumps = 2; // ✅ НОВОЕ: Максимальное количество прыжков
-    private int currentJumps = 0; // ✅ НОВОЕ: Текущее количество прыжков
+    public int maxJumps = 2;
+    private int currentJumps = 0;
     private bool isGrounded = false;
     private LayerMask groundLayer;
 
@@ -34,12 +33,21 @@ public class PlayerController : CharacterBase
     public GameObject vacuumParticlePrefab;
     private ParticleSystem activeVacuumVFX;
 
-    // ❌ УДАЛЕНО: Всё связанное с AnimatorSystem
+    // ✅ ДОБАВЛЕНО: Для системы Animator
+    [Header("Animator System")]
+    public Animator animator;
 
     void Start()
     {
         rb.freezeRotation = true;
         moveSpeed = 8f;
+        
+        // ✅ ИНИЦИАЛИЗАЦИЯ ANIMATOR
+        if (animator == null)
+        {
+            animator = GetComponent<Animator>();
+        }
+
         if (cameraTransform == null)
         {
             cameraTransform = Camera.main.transform;
@@ -60,20 +68,28 @@ public class PlayerController : CharacterBase
 
     public override void Move(Vector3 direction)
     {
-        if (!isGameActive) return;  // ✅ Теперь работает
+        if (!isGameActive) return;
+        
         float h = Input.GetAxis("Horizontal");
         float v = Input.GetAxis("Vertical");
         isSprinting = Input.GetKey(KeyCode.LeftShift);
-
+        
         Vector3 forward = cameraTransform.forward;
         Vector3 right = cameraTransform.right;
         forward.y = 0f;
         right.y = 0f;
         forward.Normalize();
         right.Normalize();
-
+        
         Vector3 moveDirection = (forward * v + right * h).normalized;
         float currentSpeed = isSprinting ? moveSpeed * sprintMultiplier : moveSpeed;
+
+        // ✅ АНИМАЦИЯ ANIMATOR: Передаем скорость движения
+        if (animator != null)
+        {
+            // Параметр "Speed" должен быть создан в Animator Controller (Float)
+            animator.SetFloat("Speed", moveDirection.magnitude * currentSpeed);
+        }
 
         if (rb != null)
         {
@@ -87,13 +103,12 @@ public class PlayerController : CharacterBase
 
     void Update()
     {
-        if (!isGameActive) return;  // ✅ Теперь работает
-
+        if (!isGameActive) return;
+        
         HandleCameraRotation();
         Move(Vector3.zero);
         CheckGround();
 
-        // ✅ ИЗМЕНЕНО: Проверка на двойной прыжок
         if (Input.GetKeyDown(KeyCode.Space) && currentJumps < maxJumps)
         {
             Jump();
@@ -120,17 +135,12 @@ public class PlayerController : CharacterBase
         {
             TogglePause();
         }
-
-        // ❌ УДАЛЕНО: Обновление анимации
     }
 
-    // ✅ ИЗМЕНЕНО: Отслеживание приземления для сброса прыжков
     void CheckGround()
     {
-        bool wasGrounded = isGrounded; // Запоминаем состояние с прошлого кадра
+        bool wasGrounded = isGrounded;
         isGrounded = Physics.Raycast(transform.position, Vector3.down, groundCheckDistance, groundLayer);
-
-        // Если только что приземлились, сбрасываем счетчик прыжков
         if (isGrounded && !wasGrounded)
         {
             currentJumps = 0;
@@ -151,7 +161,6 @@ public class PlayerController : CharacterBase
     {
         float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity;
         float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity;
-
         transform.Rotate(Vector3.up * mouseX);
         xRotation -= mouseY;
         xRotation = Mathf.Clamp(xRotation, -90f, 90f);
@@ -160,6 +169,12 @@ public class PlayerController : CharacterBase
 
     void StartVacuum()
     {
+        // ✅ АНИМАЦИЯ ANIMATOR: Запуск состояния пылесоса
+        if (animator != null)
+        {
+            animator.SetBool("IsVacuuming", true);
+        }
+
         if (AudioManager.Instance != null)
         {
             AudioManager.Instance.StartVacuumSound();
@@ -179,6 +194,12 @@ public class PlayerController : CharacterBase
 
     void StopVacuum()
     {
+        // ✅ АНИМАЦИЯ ANIMATOR: Остановка состояния пылесоса
+        if (animator != null)
+        {
+            animator.SetBool("IsVacuuming", false);
+        }
+
         if (AudioManager.Instance != null)
         {
             AudioManager.Instance.StopVacuumSound();
@@ -253,7 +274,7 @@ public class PlayerController : CharacterBase
 
     void GameOver()
     {
-        isGameActive = false;  // ✅ Теперь работает
+        isGameActive = false;
         if (isVacuumActive)
         {
             StopVacuum();
