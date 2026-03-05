@@ -38,10 +38,11 @@ public class PhotonNetworkManager : MonoBehaviourPunCallbacks
         PhotonNetwork.GameVersion = gameVersion;
         PhotonNetwork.AutomaticallySyncScene = true;
         
-        // ✅ KEEP-ALIVE: Отправляем ping каждые 5 секунд
-        PhotonNetwork.KeepAliveInBackground = 5000;
-        PhotonNetwork.SendRate = 60;
-        PhotonNetwork.SerializationRate = 30;
+        // ✅ УЛУЧШЕННЫЕ НАСТРОЙКИ KEEP-ALIVE
+        PhotonNetwork.KeepAliveInBackground = 3000; // 3 секунды (было 5000)
+        PhotonNetwork.SendRate = 60; // 60 раз в секунду
+        PhotonNetwork.SerializationRate = 30; // 30 раз в секунду
+        
         
         DebugLog($"📊 GameVersion: {gameVersion}");
         DebugLog($"📊 RoomName: {roomName}");
@@ -64,7 +65,7 @@ public class PhotonNetworkManager : MonoBehaviourPunCallbacks
         // ✅ KEEP-ALIVE: Поддерживаем соединение активным
         if (PhotonNetwork.IsConnectedAndReady && PhotonNetwork.InRoom)
         {
-            // Photon автоматически отправляет ping, но можно добавить свою логику
+            // Photon автоматически отправляет ping
         }
     }
     
@@ -101,6 +102,10 @@ public class PhotonNetworkManager : MonoBehaviourPunCallbacks
         roomOptions.IsVisible = true;
         roomOptions.IsOpen = true;
         roomOptions.PublishUserId = true;
+        
+        // ✅ Увеличиваем таймаут комнаты
+        roomOptions.EmptyRoomTtl = 60000; // 60 секунд
+        roomOptions.PlayerTtl = 60000; // 60 секунд
         
         DebugLog($"📊 RoomOptions.MaxPlayers: {roomOptions.MaxPlayers}");
         DebugLog($"📊 RoomOptions.IsVisible: {roomOptions.IsVisible}");
@@ -170,7 +175,6 @@ public class PhotonNetworkManager : MonoBehaviourPunCallbacks
     {
         DebugLogWarning($"⚠️ Отключено от сервера: {cause}");
         DebugLogError($"❌ ПРИЧИНА: {cause.ToString()}");
-        
         DebugLogError($"📊 PhotonNetwork.IsConnected: {PhotonNetwork.IsConnected}");
         DebugLogError($"📊 NetworkClientState: {PhotonNetwork.NetworkClientState}");
         
@@ -183,7 +187,6 @@ public class PhotonNetworkManager : MonoBehaviourPunCallbacks
                 isReconnecting = true;
                 DebugLog($"🔄 Попытка реконнекта {reconnectAttempts}/{maxReconnectAttempts}...");
                 
-                // ✅ Ждём 3 секунды перед повторным подключением
                 Invoke(nameof(ConnectToPhoton), 3f);
             }
             else
@@ -212,8 +215,7 @@ public class PhotonNetworkManager : MonoBehaviourPunCallbacks
     {
         DebugLogError($"❌ Ошибка входа в комнату: {returnCode} - {message}");
         
-        // ✅ Если пользователь уже в комнате - покидаем её и пробуем снова
-        if (returnCode == 32746) // UserId already joined
+        if (returnCode == 32746)
         {
             DebugLog("🔄 UserId уже в комнате. Пробуем покинуть и зайти снова...");
             PhotonNetwork.LeaveRoom(false);

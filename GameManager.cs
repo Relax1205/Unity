@@ -15,6 +15,10 @@ public class GameManager : MonoBehaviourPun
     public int ghostsCaught = 0;
     private bool gameActive = true;
     
+    // ✅ PTS: Статистика пакетов
+    private int ptsSent = 0;
+    private int ptsReceived = 0;
+
     void Awake()
     {
         if (Instance == null)
@@ -27,16 +31,15 @@ public class GameManager : MonoBehaviourPun
             Destroy(gameObject);
         }
     }
-    
+
     void Start()
     {
-            // ✅ ПРОВЕРКА ПРЕФАБА
+        // ✅ ПРОВЕРКА ПРЕФАБА
         if (ghostPrefab == null)
         {
             Debug.LogError("❌ ОШИБКА: Ghost Prefab не назначен!");
             return;
         }
-        
         Debug.Log($"✅ Ghost Prefab назначен: {ghostPrefab.name}");
         
         PhotonView pv = ghostPrefab.GetComponent<PhotonView>();
@@ -48,10 +51,22 @@ public class GameManager : MonoBehaviourPun
         {
             Debug.Log($"✅ PhotonView найден на {ghostPrefab.name}");
         }
-    
+        
+        // ✅ ПРОВЕРКА: Есть ли PhotonView на GameManager
+        PhotonView gmPv = GetComponent<PhotonView>();
+        if (gmPv == null)
+        {
+            Debug.LogError("❌ ОШИБКА: Нет PhotonView на GameManager! Добавьте компонент!");
+        }
+        else
+        {
+            Debug.Log($"✅ PhotonView найден на GameManager: View ID = {gmPv.ViewID}");
+        }
+        
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
         Debug.Log("🎮 GameplayCursor: Курсор заблокирован");
+        
         // Только хост инициализирует игру
         if (PhotonNetwork.IsMasterClient)
         {
@@ -65,9 +80,18 @@ public class GameManager : MonoBehaviourPun
             }
             
             Invoke("SpawnAllGhosts", 1f);
+            
+            // ✅ PTS: Запуск мониторинга пакетов
+            InvokeRepeating("MonitorPTS", 5f, 5f);
         }
     }
-    
+
+    // ✅ PTS: Мониторинг статистики пакетов
+    void MonitorPTS()
+    {
+        Debug.Log($"📊 PTS STAT: Отправлено={ptsSent} | Получено={ptsReceived}");
+    }
+
     void SpawnAllGhosts()
     {
         for (int i = 0; i < maxGhosts; i++)
@@ -75,17 +99,15 @@ public class GameManager : MonoBehaviourPun
             SpawnGhost();
         }
     }
-    
+
     void SpawnGhost()
     {
-        // ✅ ПРОВЕРКА: Существует ли префаб
         if (ghostPrefab == null)
         {
             Debug.LogError("❌ ОШИБКА: ghostPrefab не назначен в GameManager!");
             return;
         }
         
-        // ✅ ПРОВЕРКА: Есть ли PhotonView на префабе
         PhotonView pv = ghostPrefab.GetComponent<PhotonView>();
         if (pv == null)
         {
@@ -100,18 +122,24 @@ public class GameManager : MonoBehaviourPun
             Random.Range(-spawnRange, spawnRange)
         );
         
-        // ✅ Сетевой инстанс призрака (используем имя префаба)
         PhotonNetwork.Instantiate(ghostPrefab.name, randomPos, Quaternion.identity, 0);
         
+        ptsSent++;
         Debug.Log($"👻 Призрак создан: {ghostPrefab.name} в позиции {randomPos}");
     }
-    
+
+    // ✅ PTS: СЕТЕВОЙ ВЫЗОВ с данными пакета
     [PunRPC]
-    public void OnGhostCaughtRPC()
+    public void OnGhostCaughtRPC(int newScore, int newGhostsCaught, float timestamp)
     {
+        Debug.Log($"📦 PTS RPC: Призрак пойман! Счёт={newScore} | Время={timestamp}");
+        
         if (!gameActive) return;
-        ghostsCaught++;
-        score++;
+        
+        score = newScore;
+        ghostsCaught = newGhostsCaught;
+        ptsReceived++;
+        
         Debug.Log($"Призрак пойман! Счет: {score}/{maxGhosts}");
         
         if (UIManager.Instance != null)
@@ -121,26 +149,39 @@ public class GameManager : MonoBehaviourPun
         
         if (ghostsCaught >= maxGhosts)
         {
-            VictoryRPC();
+            VictoryRPC(Time.time);
         }
     }
-    
+
+    // ✅ PTS: Публичный метод с формированием пакета
     public void OnGhostCaught()
     {
+        // ✅ ПРОВЕРКА: Есть ли подключение
+        if (!PhotonNetwork.IsConnectedAndReady)
+        {
+            Debug.LogWarning("⚠️ OnGhostCaught: Нет подключения к сети!");
+            OnGhostCaughtRPC(score + 1, ghostsCaught + 1, Time.time);
+            return;
+        }
+        
         if (photonView != null)
         {
-            photonView.RPC("OnGhostCaughtRPC", RpcTarget.All);
+            // ✅ ОТПРАВКА PTS ПАКЕТА всем клиентам
+            photonView.RPC("OnGhostCaughtRPC", RpcTarget.All, 
+                          score + 1, ghostsCaught + 1, Time.time);
         }
         else
         {
-            // Если нет photonView, вызываем локально
-            OnGhostCaughtRPC();
+            DebugLogError("❌ ОШИБКА: photonView == null в OnGhostCaught!");
+            OnGhostCaughtRPC(score + 1, ghostsCaught + 1, Time.time);
         }
     }
-    
+
+    // ✅ PTS: VictoryRPC с временной меткой
     [PunRPC]
-    void VictoryRPC()
+    void VictoryRPC(float timestamp)
     {
+        Debug.Log($"📦 PTS RPC: ПОБЕДА! Время={timestamp}");
         gameActive = false;
         Debug.Log("Победа! Все призраки пойманы.");
         
@@ -153,12 +194,21 @@ public class GameManager : MonoBehaviourPun
             UIManager.Instance.ShowVictory();
         }
     }
-    
+
     void Victory()
     {
         if (photonView != null)
         {
-            photonView.RPC("VictoryRPC", RpcTarget.All);
+            photonView.RPC("VictoryRPC", RpcTarget.All, Time.time);
         }
+        else
+        {
+            VictoryRPC(Time.time);
+        }
+    }
+    
+    void DebugLogError(string message)
+    {
+        Debug.LogError($"[GameManager] {message}");
     }
 }

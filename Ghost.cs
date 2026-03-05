@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections; // ✅ ДОБАВЛЕНО для Coroutine
+using Photon.Pun; 
 
 public class Ghost : CharacterBase
 {
@@ -42,24 +43,29 @@ public class Ghost : CharacterBase
         transform.Translate(dir * moveSpeed * Time.deltaTime);
     }
 
-    // ✅ КЛЮЧЕВАЯ АНИМАЦИЯ (через Coroutine)
+   // ✅ КЛЮЧЕВАЯ АНИМАЦИЯ (через Coroutine)
     public override void Die()
     {
         Debug.Log("👻 Призрак поглощён!");
         isVacuumed = true;
-
+        
         // Звук
         if (AudioManager.Instance != null)
         {
             AudioManager.Instance.PlayGhostDieSound();
         }
-
-        // Счёт
-        if (GameManager.Instance != null)
+        
+        // ✅ ПРОВЕРКА: Есть ли подключение к сети
+        if (PhotonNetwork.IsConnectedAndReady && GameManager.Instance != null)
         {
             GameManager.Instance.OnGhostCaught();
         }
-
+        else if (GameManager.Instance != null)
+        {
+            // Локальный вызов если нет сети
+            GameManager.Instance.OnGhostCaught();
+        }
+        
         // ✅ ЗАПУСК АНИМАЦИИ СМЕРТИ
         StartCoroutine(DeathAnimationRoutine());
     }
