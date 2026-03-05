@@ -1,5 +1,7 @@
 using UnityEngine;
 using Photon.Pun;
+using UnityEngine.XR;
+using UnityEngine.SceneManagement;
 
 [RequireComponent(typeof(Rigidbody))]
 public class PlayerController : CharacterBase, IPunObservable
@@ -38,62 +40,78 @@ public class PlayerController : CharacterBase, IPunObservable
     [Header("Animator System")]
     public Animator animator;
 
-    // ✅ СЕТЕВЫЕ КОМПОНЕНТЫ PHOTON PUN
     private PhotonView photonView;
     private bool isLocalPlayer = false;
-    
-    // ✅ PTS: Пользовательский пакет данных
+
     private UserDataPacket currentPTS;
     private UserDataPacket lastReceivedPTS;
     private float lastPTSUpdateTime = 0f;
-    
-    // ✅ Счёт игрока (для PTS)
+
     private int playerScore = 0;
 
     void Start()
     {
-        
         rb.freezeRotation = true;
         moveSpeed = 8f;
 
-        // ✅ ПОЛУЧАЕМ PhotonView компонент
         photonView = GetComponent<PhotonView>();
-        
-        // ✅ ПРОВЕРЯЕМ: является ли этот игрок локальным
         isLocalPlayer = photonView.IsMine;
 
-        // ✅ ИНИЦИАЛИЗАЦИЯ ANIMATOR
         if (animator == null)
         {
             animator = GetComponent<Animator>();
         }
+
+        bool isVR = XRSettings.enabled;
+        Debug.Log($"VR Status: {isVR}");
+
+        string currentScene = SceneManager.GetActiveScene().name;
+        Debug.Log($"PlayerController.Start: Текущая сцена = {currentScene}");
 
         if (cameraTransform == null)
         {
             cameraTransform = Camera.main.transform;
         }
 
-        // ✅ КАМЕРУ прикрепляем ТОЛЬКО к локальному игроку
         if (isLocalPlayer)
         {
-            cameraTransform.SetParent(transform);
-            cameraTransform.localPosition = new Vector3(0, 1f, 0);
-            transform.rotation = Quaternion.identity;
-            cameraTransform.localRotation = Quaternion.identity;
-            xRotation = 0f;
-            
+            if (!isVR)
+            {
+                cameraTransform.SetParent(transform);
+                cameraTransform.localPosition = new Vector3(0, 1f, 0);
+                transform.rotation = Quaternion.identity;
+                cameraTransform.localRotation = Quaternion.identity;
+                xRotation = 0f;
+
+                if (currentScene == "GameScene")
+                {
+                    Cursor.lockState = CursorLockMode.Locked;
+                    Cursor.visible = false;
+                    Debug.Log("PlayerCursor: Курсор заблокирован (Игра)");
+                }
+                else
+                {
+                    Cursor.lockState = CursorLockMode.None;
+                    Cursor.visible = true;
+                    Debug.Log("PlayerCursor: Курсор свободен (Лобби/Меню)");
+                }
+            }
+            else
+            {
+                Debug.Log("VR Режим: Камера не привязывается к игроку");
+                Cursor.lockState = CursorLockMode.None;
+                Cursor.visible = false;
+            }
         }
         else
         {
-            // ✅ Для удалённых игроков: отключаем камеру и освобождаем курсор
-            if (Camera.main != null)
+            if (Camera.main != null && !isVR)
             {
                 Camera.main.enabled = false;
             }
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
-            
-            // ✅ Удалённые игроки не управляют физикой напрямую
+
             if (rb != null)
             {
                 rb.isKinematic = true;
@@ -102,17 +120,14 @@ public class PlayerController : CharacterBase, IPunObservable
 
         groundLayer = LayerMask.GetMask("Ground", "Default");
 
-        // ✅ UI обновляем только для локального игрока
         if (UIManager.Instance != null && isLocalPlayer)
         {
             UIManager.Instance.UpdateHealth(health, 100);
         }
-        
-        // ✅ ИНИЦИАЛИЗАЦИЯ PTS ПАКЕТА
+
         InitializePTS();
     }
 
-    // ✅ PTS: Инициализация пакета
     void InitializePTS()
     {
         currentPTS = new UserDataPacket(
@@ -124,10 +139,9 @@ public class PlayerController : CharacterBase, IPunObservable
             isGrounded,
             currentJumps
         );
-        Debug.Log("📦 PTS: Пакет инициализирован");
+        Debug.Log("PTS: Пакет инициализирован");
     }
 
-    // ✅ PTS: Обновление данных пакета
     void UpdatePTS()
     {
         currentPTS = new UserDataPacket(
@@ -141,15 +155,11 @@ public class PlayerController : CharacterBase, IPunObservable
         );
     }
 
-    // ✅ СИНХРОНИЗАЦИЯ ДАННЫХ МЕЖДУ КЛИЕНТАМИ (IPunObservable)
     public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
     {
         if (stream.IsWriting)
         {
-            // 📤 ОТПРАВКА данных (только для локального игрока)
-            // ✅ PTS: Формируем пакет для отправки
             UpdatePTS();
-            
             stream.SendNext(currentPTS.position);
             stream.SendNext(currentPTS.rotation);
             stream.SendNext(currentPTS.health);
@@ -158,17 +168,14 @@ public class PlayerController : CharacterBase, IPunObservable
             stream.SendNext(currentPTS.isGrounded);
             stream.SendNext(currentPTS.currentJumps);
             stream.SendNext(currentPTS.timestamp);
-            
-            // ✅ Логирование отправки (для отладки)
-            if (Time.frameCount % 60 == 0) // Раз в секунду
+
+            if (Time.frameCount % 60 == 0)
             {
-                Debug.Log("📤 PTS: Отправка пакета " + currentPTS.position);
+                Debug.Log("PTS: Отправка пакета " + currentPTS.position);
             }
         }
         else
         {
-            // 📥 ПОЛУЧЕНИЕ данных (только для удалённых игроков)
-            // ✅ PTS: Получаем и обрабатываем пакет
             Vector3 pos = (Vector3)stream.ReceiveNext();
             Quaternion rot = (Quaternion)stream.ReceiveNext();
             int hp = (int)stream.ReceiveNext();
@@ -177,16 +184,13 @@ public class PlayerController : CharacterBase, IPunObservable
             bool grounded = (bool)stream.ReceiveNext();
             int jumps = (int)stream.ReceiveNext();
             float ts = (float)stream.ReceiveNext();
-            
-            // ✅ Создаём полученный PTS пакет
+
             lastReceivedPTS = new UserDataPacket(pos, rot, hp, sc, vacuum, grounded, jumps);
             lastReceivedPTS.timestamp = ts;
             lastPTSUpdateTime = Time.time;
-            
-            // ✅ Интерполяция для плавности (из лекции стр. 58-59)
+
             if (!isLocalPlayer)
             {
-                // Плавное перемещение к полученной позиции
                 transform.position = Vector3.Lerp(transform.position, pos, Time.deltaTime * 10);
                 transform.rotation = Quaternion.Lerp(transform.rotation, rot, Time.deltaTime * 10);
                 health = hp;
@@ -194,17 +198,15 @@ public class PlayerController : CharacterBase, IPunObservable
                 isVacuumActive = vacuum;
                 isGrounded = grounded;
                 currentJumps = jumps;
-                
-                // ✅ Логирование получения (для отладки)
+
                 if (Time.frameCount % 60 == 0)
                 {
-                    Debug.Log("📥 PTS: Получен пакет от " + info.Sender + " | HP:" + hp);
+                    Debug.Log("PTS: Получен пакет от " + info.Sender + " | HP:" + hp);
                 }
             }
         }
     }
 
-    // ✅ ДВИЖЕНИЕ ТОЛЬКО ДЛЯ ЛОКАЛЬНОГО ИГРОКА
     public override void Move(Vector3 direction)
     {
         if (!isGameActive || !isLocalPlayer) return;
@@ -213,8 +215,9 @@ public class PlayerController : CharacterBase, IPunObservable
         float v = Input.GetAxis("Vertical");
         isSprinting = Input.GetKey(KeyCode.LeftShift);
 
-        Vector3 forward = cameraTransform.forward;
-        Vector3 right = cameraTransform.right;
+        Transform cam = cameraTransform != null ? cameraTransform : Camera.main.transform;
+        Vector3 forward = cam.forward;
+        Vector3 right = cam.right;
         forward.y = 0f;
         right.y = 0f;
         forward.Normalize();
@@ -223,7 +226,6 @@ public class PlayerController : CharacterBase, IPunObservable
         Vector3 moveDirection = (forward * v + right * h).normalized;
         float currentSpeed = isSprinting ? moveSpeed * sprintMultiplier : moveSpeed;
 
-        // ✅ АНИМАЦИЯ ANIMATOR
         if (animator != null)
         {
             animator.SetFloat("Speed", moveDirection.magnitude * currentSpeed);
@@ -243,7 +245,12 @@ public class PlayerController : CharacterBase, IPunObservable
     {
         if (!isGameActive || !isLocalPlayer) return;
 
-        HandleCameraRotation();
+        bool isVR = XRSettings.enabled;
+        if (!isVR)
+        {
+            HandleCameraRotation();
+        }
+
         Move(Vector3.zero);
         CheckGround();
 
@@ -380,23 +387,18 @@ public class PlayerController : CharacterBase, IPunObservable
         destroyScheduled = false;
     }
 
-    // ✅ PTS: СЕТЕВОЙ ВЫЗОВ ДЛЯ ПОЛУЧЕНИЯ УРОНА (RPC)
     [PunRPC]
     public void TakeDamageRPC(int damage, float timestamp)
     {
-        Debug.Log($"📦 PTS RPC: Получен урон {damage} в {timestamp}");
+        Debug.Log($"PTS RPC: Получен урон {damage} в {timestamp}");
         TakeDamage(damage);
     }
 
-    // ✅ PTS: TAKEDEAMAGE С СЕТЕВЫМ ВЫЗОВОМ
     public override void TakeDamage(int damage)
     {
         if (photonView.IsMine)
         {
-            // ✅ Локальный игрок получает урон напрямую
             base.TakeDamage(damage);
-            
-            // ✅ ОТПРАВКА PTS ПАКЕТА ОБ УРОНЕ
             SendDamagePTS(damage);
 
             if (hitParticlePrefab != null)
@@ -418,12 +420,10 @@ public class PlayerController : CharacterBase, IPunObservable
         }
         else
         {
-            // ✅ Удалённый игрок - вызываем RPC для всех клиентов
             photonView.RPC("TakeDamageRPC", RpcTarget.All, damage, Time.time);
         }
     }
-    
-    // ✅ PTS: Отправка пакета урона
+
     void SendDamagePTS(int damage)
     {
         UserDataPacket damagePTS = new UserDataPacket(
@@ -435,35 +435,32 @@ public class PlayerController : CharacterBase, IPunObservable
             isGrounded,
             currentJumps
         );
-        damagePTS.DebugLog("📤 PTS DAMAGE");
+        damagePTS.DebugLog("PTS DAMAGE");
     }
 
-    // ✅ PTS: Обновление счёта через RPC
     [PunRPC]
     public void UpdateScoreRPC(int newScore)
     {
-        Debug.Log($"📦 PTS RPC: Счёт обновлён {playerScore} -> {newScore}");
+        Debug.Log($"PTS RPC: Счёт обновлён {playerScore} -> {newScore}");
         playerScore = newScore;
         if (UIManager.Instance != null && isLocalPlayer)
         {
             UIManager.Instance.UpdateScore(playerScore);
         }
     }
-    
-    // ✅ PTS: Публичный метод для обновления счёта
+
     public void UpdateScore(int newScore)
     {
         playerScore = newScore;
         if (photonView.IsMine)
         {
-            // ✅ Отправляем обновление счёта всем клиентам
             photonView.RPC("UpdateScoreRPC", RpcTarget.All, newScore);
         }
     }
 
     public override void Die()
     {
-        Debug.Log("💀 Игрок погиб!");
+        Debug.Log("Игрок погиб!");
         GameOver();
     }
 

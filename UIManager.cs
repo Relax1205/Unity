@@ -39,8 +39,8 @@ public class UIManager : MonoBehaviour
         SetupHealthUIPosition();
         SetupScoreUIPosition();
         
-        Debug.Log("📋 UIManager Start: Scene = " + SceneManager.GetActiveScene().name);
-        Debug.Log("🔊 UIManager: AudioManager.Instance = " + (AudioManager.Instance != null ? "✅ OK" : "❌ NULL"));
+        Debug.Log("UIManager Start: Scene = " + SceneManager.GetActiveScene().name);
+        Debug.Log("UIManager: AudioManager.Instance = " + (AudioManager.Instance != null ? "OK" : "NULL"));
         
         if (mainMenuPanel != null && SceneManager.GetActiveScene().name == "MainMenu")
         {
@@ -112,21 +112,20 @@ public class UIManager : MonoBehaviour
     
     public void ShowMainMenu()
     {
-        Debug.Log("📋 UIManager: ShowMainMenu called");
+        Debug.Log("UIManager: ShowMainMenu called");
         Time.timeScale = 1f;
         HideAllPanels();
         
         if (mainMenuPanel != null) mainMenuPanel.SetActive(true);
         
-        // 🎵 ИСПРАВЛЕНИЕ: Включаем музыку меню
-        Debug.Log("🔊 UIManager: AudioManager.Instance = " + (AudioManager.Instance != null ? "✅ OK" : "❌ NULL"));
+        Debug.Log("UIManager: AudioManager.Instance = " + (AudioManager.Instance != null ? "OK" : "NULL"));
         if (AudioManager.Instance != null)
         {
             AudioManager.Instance.PlayMenuMusic();
         }
         else
         {
-            Debug.LogError("❌ UIManager: AudioManager не найден!");
+            Debug.LogError("UIManager: AudioManager не найден!");
         }
         
         if (highScoreText != null && GameData.Instance != null)
@@ -140,23 +139,20 @@ public class UIManager : MonoBehaviour
     
     public void StartGame()
     {
-        // ЗВУК: Клик кнопки
         if (AudioManager.Instance != null) AudioManager.Instance.PlayClickSound();
-        Debug.Log("🎮 UIManager: StartGame called");
+        Debug.Log("UIManager: StartGame called");
         Time.timeScale = 1f;
         HideAllPanels();
         
-        // ✅ БЛОКИРУЕМ КУРСОР ПРИ СТАРТЕ ИГРЫ
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
         
-        // 🎵 Музыка игры запустится в GameManager.Start() после загрузки сцены
         SceneManager.LoadScene("GameScene");
     }
     
     public void ShowGameOver()
     {
-        Debug.Log("💀 UIManager: ShowGameOver called");
+        Debug.Log("UIManager: ShowGameOver called");
         Time.timeScale = 0f;
         HideAllPanels();
         
@@ -176,7 +172,7 @@ public class UIManager : MonoBehaviour
     
     public void ShowVictory()
     {
-        Debug.Log("🏆 UIManager: ShowVictory called");
+        Debug.Log("UIManager: ShowVictory called");
         Time.timeScale = 0f;
         HideAllPanels();
         
@@ -206,7 +202,7 @@ public class UIManager : MonoBehaviour
     
     public void PauseGame()
     {
-        Debug.Log("⏸️ UIManager: PauseGame called");
+        Debug.Log("UIManager: PauseGame called");
         Time.timeScale = 0f;
         
         if (pausePanel != null) pausePanel.SetActive(true);
@@ -216,7 +212,7 @@ public class UIManager : MonoBehaviour
     
     public void ResumeGame()
     {
-        Debug.Log("▶️ UIManager: ResumeGame called");
+        Debug.Log("UIManager: ResumeGame called");
         Time.timeScale = 1f;
         
         if (pausePanel != null) pausePanel.SetActive(false);
@@ -236,7 +232,6 @@ public class UIManager : MonoBehaviour
         if (AudioManager.Instance != null) AudioManager.Instance.PlayClickSound();
         Time.timeScale = 1f;
         
-        // 🎵 ИСПРАВЛЕНИЕ: Останавливаем музыку игры перед загрузкой меню
         if (AudioManager.Instance != null)
         {
             AudioManager.Instance.StopAllMusic();
@@ -250,7 +245,7 @@ public class UIManager : MonoBehaviour
         if (AudioManager.Instance != null) AudioManager.Instance.PlayClickSound();
         
         #if UNITY_EDITOR
-        Debug.Log("🚪 QuitGame: В редакторе игра остановлена");
+        Debug.Log("QuitGame: В редакторе игра остановлена");
         UnityEditor.EditorApplication.isPlaying = false;
         #else
         Application.Quit();

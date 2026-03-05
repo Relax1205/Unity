@@ -1,11 +1,11 @@
 using UnityEngine;
-using System.Collections; // ✅ ДОБАВЛЕНО для Coroutine
+using System.Collections;
 using Photon.Pun; 
 
 public class Ghost : CharacterBase
 {
     [Header("Ghost Settings")]
-    public float floatHeight = 0.5f; // ✅ УВЕЛИЧЕНО для видимости
+    public float floatHeight = 0.5f;
     public float floatSpeed = 1f;
     public float detectRange = 5f;
     public float attackRange = 1.5f;
@@ -43,34 +43,28 @@ public class Ghost : CharacterBase
         transform.Translate(dir * moveSpeed * Time.deltaTime);
     }
 
-   // ✅ КЛЮЧЕВАЯ АНИМАЦИЯ (через Coroutine)
     public override void Die()
     {
-        Debug.Log("👻 Призрак поглощён!");
+        Debug.Log("Призрак поглощён!");
         isVacuumed = true;
         
-        // Звук
         if (AudioManager.Instance != null)
         {
             AudioManager.Instance.PlayGhostDieSound();
         }
         
-        // ✅ ПРОВЕРКА: Есть ли подключение к сети
         if (PhotonNetwork.IsConnectedAndReady && GameManager.Instance != null)
         {
             GameManager.Instance.OnGhostCaught();
         }
         else if (GameManager.Instance != null)
         {
-            // Локальный вызов если нет сети
             GameManager.Instance.OnGhostCaught();
         }
         
-        // ✅ ЗАПУСК АНИМАЦИИ СМЕРТИ
         StartCoroutine(DeathAnimationRoutine());
     }
 
-    // ✅ ИМИТАЦИЯ КЛЮЧЕВОЙ АНИМАЦИИ (Scale 1 -> 0)
     IEnumerator DeathAnimationRoutine()
     {
         float duration = 0.5f;
@@ -78,7 +72,6 @@ public class Ghost : CharacterBase
         Vector3 startScale = transform.localScale;
         Vector3 endScale = Vector3.zero;
 
-        // Отключаем коллайдер, чтобы нельзя было ранить
         if (GetComponent<Collider>() != null)
             GetComponent<Collider>().enabled = false;
 
@@ -86,21 +79,17 @@ public class Ghost : CharacterBase
         {
             timer += Time.deltaTime;
             float t = timer / duration;
-            // Интерполяция (как в ключевой анимации)
             transform.localScale = Vector3.Lerp(startScale, endScale, t);
             yield return null;
         }
 
-        // Удаляем объект после анимации
         Destroy(gameObject);
     }
 
-    // ✅ ПРОЦЕДУРНАЯ АНИМАЦИЯ: Парение
     void Update()
     {
         if (isVacuumed || player == null) return;
 
-        // Добавляем процедурное покачивание по Y независимо от логики ИИ
         float newY = startPos.y + Mathf.Sin(Time.time * floatSpeed) * floatHeight;
         transform.position = new Vector3(transform.position.x, newY, transform.position.z);
 
@@ -121,7 +110,6 @@ public class Ghost : CharacterBase
 
     void Patrol()
     {
-        // Движение по X/Z осталось, но Y теперь контролируется в Update для плавности
         float x = Mathf.Sin(Time.time * floatSpeed) * 0.3f;
         float z = Mathf.Cos(Time.time * floatSpeed) * 0.3f;
         Move(new Vector3(x, 0, z));

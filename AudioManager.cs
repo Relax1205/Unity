@@ -19,76 +19,69 @@ public class AudioManager : MonoBehaviour
 
     void Awake()
     {
-        // Паттерн Singleton
         if (Instance == null)
         {
             Instance = this;
             DontDestroyOnLoad(gameObject);
-            Debug.Log("✅ AudioManager: Создан и сохранён между сценами");
+            Debug.Log("AudioManager: Создан и сохранён между сценами");
         }
         else
         {
-            Debug.LogWarning("⚠️ AudioManager: Дубликат удалён!");
+            Debug.LogWarning("AudioManager: Дубликат удалён!");
             Destroy(gameObject);
             return;
         }
 
-        // Добавляем компоненты AudioSource
         if (musicSource == null) musicSource = gameObject.AddComponent<AudioSource>();
         if (sfxSource == null) sfxSource = gameObject.AddComponent<AudioSource>();
         if (vacuumSource == null) vacuumSource = gameObject.AddComponent<AudioSource>();
 
-        // Настройки музыки
         musicSource.loop = true;
         musicSource.playOnAwake = false;
         musicSource.volume = 0.5f;
-        musicSource.spatialBlend = 0f; // 2D звук (важно для музыки!)
+        musicSource.spatialBlend = 0f;
         musicSource.priority = 0;
 
-        // Настройки эффектов
         sfxSource.playOnAwake = false;
         sfxSource.loop = false;
         sfxSource.volume = 1f;
         sfxSource.spatialBlend = 0f;
         sfxSource.priority = 128;
         
-        // Настройки пылесоса
         vacuumSource.playOnAwake = false;
         vacuumSource.loop = true;
         vacuumSource.volume = 0.8f;
         vacuumSource.spatialBlend = 0f;
 
-        // Проверка клипов
-        Debug.Log("🎵 AudioManager: menuMusicClip = " + (menuMusicClip != null ? "✅ НАЗНАЧЕН" : "❌ ПУСТОЙ"));
-        Debug.Log("🎵 AudioManager: gameMusicClip = " + (gameMusicClip != null ? "✅ НАЗНАЧЕН" : "❌ ПУСТОЙ"));
+        Debug.Log("AudioManager: menuMusicClip = " + (menuMusicClip != null ? "НАЗНАЧЕН" : "ПУСТОЙ"));
+        Debug.Log("AudioManager: gameMusicClip = " + (gameMusicClip != null ? "НАЗНАЧЕН" : "ПУСТОЙ"));
     }
 
     public void PlayMenuMusic()
     {
         if (Instance == null)
         {
-            Debug.LogError("❌ AudioManager: Instance = NULL!");
+            Debug.LogError("AudioManager: Instance = NULL!");
             return;
         }
 
-        // 🛑 ИСПРАВЛЕНИЕ: Сначала останавливаем любую текущую музыку
         musicSource.Stop();
 
         if (menuMusicClip != null)
         {
             musicSource.clip = menuMusicClip;
             musicSource.Play();
-            Debug.Log("✅ AudioManager: Играет музыка МЕНЮ");
+            Debug.Log("AudioManager: Играет музыка МЕНЮ");
         }
         else if (gameMusicClip != null)
         {
             musicSource.clip = gameMusicClip;
             musicSource.Play();
-            Debug.Log("⚠️ AudioManager: Играет музыка ИГРЫ (запасной вариант)");
+            Debug.Log("AudioManager: Играет музыка ИГРЫ (запасной вариант)");
         }
         else
         {
-            Debug.LogError("❌ AudioManager: Нет клипов для музыки!");
+            Debug.LogError("AudioManager: Нет клипов для музыки!");
         }
     }
 
@@ -96,22 +89,21 @@ public class AudioManager : MonoBehaviour
     {
         if (Instance == null)
         {
-            Debug.LogError("❌ AudioManager: Instance = NULL!");
+            Debug.LogError("AudioManager: Instance = NULL!");
             return;
         }
 
-        // 🛑 ИСПРАВЛЕНИЕ: Сначала останавливаем любую текущую музыку
         musicSource.Stop();
 
         if (gameMusicClip != null)
         {
             musicSource.clip = gameMusicClip;
             musicSource.Play();
-            Debug.Log("✅ AudioManager: Играет музыка ИГРЫ");
+            Debug.Log("AudioManager: Играет музыка ИГРЫ");
         }
         else
         {
-            Debug.LogError("❌ AudioManager: gameMusicClip не назначен!");
+            Debug.LogError("AudioManager: gameMusicClip не назначен!");
         }
     }
 
@@ -120,7 +112,7 @@ public class AudioManager : MonoBehaviour
         if (musicSource != null)
         {
             musicSource.Stop();
-            Debug.Log("⏹️ AudioManager: Вся музыка остановлена");
+            Debug.Log("AudioManager: Вся музыка остановлена");
         }
     }
 

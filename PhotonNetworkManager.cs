@@ -26,11 +26,11 @@ public class PhotonNetworkManager : MonoBehaviourPunCallbacks
         {
             Instance = this;
             DontDestroyOnLoad(gameObject);
-            DebugLog("✅ PhotonNetworkManager: Создан и сохранён между сценами");
+            DebugLog("PhotonNetworkManager: Создан и сохранён между сценами");
         }
         else
         {
-            DebugLog("⚠️ PhotonNetworkManager: Дубликат удалён!");
+            DebugLog("PhotonNetworkManager: Дубликат удалён!");
             Destroy(gameObject);
             return;
         }
@@ -38,15 +38,14 @@ public class PhotonNetworkManager : MonoBehaviourPunCallbacks
         PhotonNetwork.GameVersion = gameVersion;
         PhotonNetwork.AutomaticallySyncScene = true;
         
-        // ✅ УЛУЧШЕННЫЕ НАСТРОЙКИ KEEP-ALIVE
-        PhotonNetwork.KeepAliveInBackground = 3000; // 3 секунды (было 5000)
-        PhotonNetwork.SendRate = 60; // 60 раз в секунду
-        PhotonNetwork.SerializationRate = 30; // 30 раз в секунду
+        PhotonNetwork.KeepAliveInBackground = 3000;
+        PhotonNetwork.SendRate = 60;
+        PhotonNetwork.SerializationRate = 30;
         
         
-        DebugLog($"📊 GameVersion: {gameVersion}");
-        DebugLog($"📊 RoomName: {roomName}");
-        DebugLog($"📊 MaxPlayers: {maxPlayers}");
+        DebugLog($"GameVersion: {gameVersion}");
+        DebugLog($"RoomName: {roomName}");
+        DebugLog($"MaxPlayers: {maxPlayers}");
     }
     
     void Start()
@@ -54,35 +53,33 @@ public class PhotonNetworkManager : MonoBehaviourPunCallbacks
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
         
-        DebugLog("🎯 PhotonNetworkManager.Start() вызван");
-        DebugLog($"📊 PhotonNetwork.IsConnected: {PhotonNetwork.IsConnected}");
+        DebugLog("PhotonNetworkManager.Start() вызван");
+        DebugLog($"PhotonNetwork.IsConnected: {PhotonNetwork.IsConnected}");
         
         ConnectToPhoton();
     }
     
     void Update()
     {
-        // ✅ KEEP-ALIVE: Поддерживаем соединение активным
         if (PhotonNetwork.IsConnectedAndReady && PhotonNetwork.InRoom)
         {
-            // Photon автоматически отправляет ping
         }
     }
     
     public void ConnectToPhoton()
     {
-        DebugLog("🌐 Подключение к Photon Server...");
-        DebugLog($"📊 PhotonNetwork.OfflineMode: {PhotonNetwork.OfflineMode}");
+        DebugLog("Подключение к Photon Server...");
+        DebugLog($"PhotonNetwork.OfflineMode: {PhotonNetwork.OfflineMode}");
         
         PhotonNetwork.ConnectUsingSettings();
     }
     
     public override void OnConnectedToMaster()
     {
-        DebugLog("✅ Подключено к Photon Master Server!");
-        DebugLog($"📊 Region: {PhotonNetwork.CloudRegion}");
-        DebugLog($"📊 Server Address: {PhotonNetwork.ServerAddress}");
-        DebugLog($"📊 IsConnectedAndReady: {PhotonNetwork.IsConnectedAndReady}");
+        DebugLog("Подключено к Photon Master Server!");
+        DebugLog($"Region: {PhotonNetwork.CloudRegion}");
+        DebugLog($"Server Address: {PhotonNetwork.ServerAddress}");
+        DebugLog($"IsConnectedAndReady: {PhotonNetwork.IsConnectedAndReady}");
         
         reconnectAttempts = 0;
         isReconnecting = false;
@@ -95,7 +92,7 @@ public class PhotonNetworkManager : MonoBehaviourPunCallbacks
     
     public void JoinOrCreateRoom()
     {
-        DebugLog($"🚪 Поиск или создание комнаты: {roomName}");
+        DebugLog($"Поиск или создание комнаты: {roomName}");
         
         RoomOptions roomOptions = new RoomOptions();
         roomOptions.MaxPlayers = maxPlayers;
@@ -103,22 +100,21 @@ public class PhotonNetworkManager : MonoBehaviourPunCallbacks
         roomOptions.IsOpen = true;
         roomOptions.PublishUserId = true;
         
-        // ✅ Увеличиваем таймаут комнаты
-        roomOptions.EmptyRoomTtl = 60000; // 60 секунд
-        roomOptions.PlayerTtl = 60000; // 60 секунд
+        roomOptions.EmptyRoomTtl = 60000;
+        roomOptions.PlayerTtl = 60000;
         
-        DebugLog($"📊 RoomOptions.MaxPlayers: {roomOptions.MaxPlayers}");
-        DebugLog($"📊 RoomOptions.IsVisible: {roomOptions.IsVisible}");
+        DebugLog($"RoomOptions.MaxPlayers: {roomOptions.MaxPlayers}");
+        DebugLog($"RoomOptions.IsVisible: {roomOptions.IsVisible}");
         
         PhotonNetwork.JoinOrCreateRoom(roomName, roomOptions, TypedLobby.Default);
     }
     
     public override void OnJoinedRoom()
     {
-        DebugLog("✅ Игрок в комнате!");
-        DebugLog($"📊 Игроков в комнате: {PhotonNetwork.CurrentRoom.PlayerCount}");
-        DebugLog($"📊 Room Name: {PhotonNetwork.CurrentRoom.Name}");
-        DebugLog($"📊 IsMasterClient: {PhotonNetwork.IsMasterClient}");
+        DebugLog("Игрок в комнате!");
+        DebugLog($"Игроков в комнате: {PhotonNetwork.CurrentRoom.PlayerCount}");
+        DebugLog($"Room Name: {PhotonNetwork.CurrentRoom.Name}");
+        DebugLog($"IsMasterClient: {PhotonNetwork.IsMasterClient}");
         
         SpawnPlayer();
     }
@@ -131,21 +127,21 @@ public class PhotonNetworkManager : MonoBehaviourPunCallbacks
         
         if (prefabCheck == null)
         {
-            DebugLogError($"❌ ОШИБКА: Префаб '{prefabName}' не найден в Resources!");
-            DebugLogError($"📁 Проверьте путь: Assets/Resources/{prefabName}.prefab");
+            DebugLogError($"ОШИБКА: Префаб '{prefabName}' не найден в Resources!");
+            DebugLogError($"Проверьте путь: Assets/Resources/{prefabName}.prefab");
             return;
         }
         
-        DebugLog($"✅ Префаб найден: {prefabCheck.name}");
+        DebugLog($"Префаб найден: {prefabCheck.name}");
         
         PhotonView pv = prefabCheck.GetComponent<PhotonView>();
         if (pv == null)
         {
-            DebugLogError($"❌ ОШИБКА: У префаба нет компонента PhotonView!");
+            DebugLogError($"ОШИБКА: У префаба нет компонента PhotonView!");
             return;
         }
         
-        DebugLog($"✅ PhotonView найден: View ID = {pv.ViewID}");
+        DebugLog($"PhotonView найден: View ID = {pv.ViewID}");
         
         bool hasObserved = false;
         if (pv.ObservedComponents != null && pv.ObservedComponents.Count > 0)
@@ -155,43 +151,42 @@ public class PhotonNetworkManager : MonoBehaviourPunCallbacks
                 if (component != null)
                 {
                     hasObserved = true;
-                    DebugLog($"✅ ObservedComponents настроен: {component.GetType().Name}");
+                    DebugLog($"ObservedComponents настроен: {component.GetType().Name}");
                     break;
                 }
             }
         }
         if (!hasObserved)
         {
-            DebugLogWarning($"⚠️ PhotonView.ObservedComponents пуст! Синхронизация может не работать.");
+            DebugLogWarning($"PhotonView.ObservedComponents пуст! Синхронизация может не работать.");
         }
         
         Vector3 spawnPos = new Vector3(0, 1, 0);
         PhotonNetwork.Instantiate(prefabName, spawnPos, Quaternion.identity, 0);
         
-        DebugLog("👤 Игрок создан в сети!");
+        DebugLog("Игрок создан в сети!");
     }
     
     public override void OnDisconnected(DisconnectCause cause)
     {
-        DebugLogWarning($"⚠️ Отключено от сервера: {cause}");
-        DebugLogError($"❌ ПРИЧИНА: {cause.ToString()}");
-        DebugLogError($"📊 PhotonNetwork.IsConnected: {PhotonNetwork.IsConnected}");
-        DebugLogError($"📊 NetworkClientState: {PhotonNetwork.NetworkClientState}");
+        DebugLogWarning($"Отключено от сервера: {cause}");
+        DebugLogError($"ПРИЧИНА: {cause.ToString()}");
+        DebugLogError($"PhotonNetwork.IsConnected: {PhotonNetwork.IsConnected}");
+        DebugLogError($"NetworkClientState: {PhotonNetwork.NetworkClientState}");
         
-        // ✅ АВТО-РЕКОННЕКТ при таймауте
         if (cause == DisconnectCause.ClientTimeout || cause == DisconnectCause.Exception)
         {
             if (reconnectAttempts < maxReconnectAttempts && !isReconnecting)
             {
                 reconnectAttempts++;
                 isReconnecting = true;
-                DebugLog($"🔄 Попытка реконнекта {reconnectAttempts}/{maxReconnectAttempts}...");
+                DebugLog($"Попытка реконнекта {reconnectAttempts}/{maxReconnectAttempts}...");
                 
                 Invoke(nameof(ConnectToPhoton), 3f);
             }
             else
             {
-                DebugLogError($"❌ Превышено количество попыток реконнекта. Проверьте сеть!");
+                DebugLogError($"Превышено количество попыток реконнекта. Проверьте сеть!");
             }
         }
         
@@ -201,23 +196,23 @@ public class PhotonNetworkManager : MonoBehaviourPunCallbacks
     
     public override void OnPlayerEnteredRoom(Player newPlayer)
     {
-        DebugLog($"👥 Новый игрок: {newPlayer.NickName}");
-        DebugLog($"📊 Игроков в комнате: {PhotonNetwork.CurrentRoom.PlayerCount}");
+        DebugLog($"Новый игрок: {newPlayer.NickName}");
+        DebugLog($"Игроков в комнате: {PhotonNetwork.CurrentRoom.PlayerCount}");
     }
     
     public override void OnPlayerLeftRoom(Player otherPlayer)
     {
-        DebugLog($"👤 Игрок вышел: {otherPlayer.NickName}");
-        DebugLog($"📊 Игроков в комнате: {PhotonNetwork.CurrentRoom.PlayerCount}");
+        DebugLog($"Игрок вышел: {otherPlayer.NickName}");
+        DebugLog($"Игроков в комнате: {PhotonNetwork.CurrentRoom.PlayerCount}");
     }
     
     public override void OnJoinRoomFailed(short returnCode, string message)
     {
-        DebugLogError($"❌ Ошибка входа в комнату: {returnCode} - {message}");
+        DebugLogError($"Ошибка входа в комнату: {returnCode} - {message}");
         
         if (returnCode == 32746)
         {
-            DebugLog("🔄 UserId уже в комнате. Пробуем покинуть и зайти снова...");
+            DebugLog("UserId уже в комнате. Пробуем покинуть и зайти снова...");
             PhotonNetwork.LeaveRoom(false);
             Invoke(nameof(JoinOrCreateRoom), 2f);
         }
@@ -225,13 +220,13 @@ public class PhotonNetworkManager : MonoBehaviourPunCallbacks
     
     public override void OnCreatedRoom()
     {
-        DebugLog("🏠 Комната создана!");
-        DebugLog($"📊 Room Name: {PhotonNetwork.CurrentRoom.Name}");
+        DebugLog("Комната создана!");
+        DebugLog($"Room Name: {PhotonNetwork.CurrentRoom.Name}");
     }
     
     public override void OnCreateRoomFailed(short returnCode, string message)
     {
-        DebugLogError($"❌ Ошибка создания комнаты: {returnCode} - {message}");
+        DebugLogError($"Ошибка создания комнаты: {returnCode} - {message}");
     }
     
     void DebugLog(string message)

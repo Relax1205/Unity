@@ -21,7 +21,7 @@ public class PTSMonitor : MonoBehaviour
     {
         if (PhotonNetwork.IsConnectedAndReady)
         {
-            Debug.Log($"📊 PTS Monitor: Sent={packetsSent} | Received={packetsReceived} | Ping={PhotonNetwork.GetPing()}ms");
+            Debug.Log($"PTS Monitor: Sent={packetsSent} | Received={packetsReceived} | Ping={PhotonNetwork.GetPing()}ms");
         }
     }
     
