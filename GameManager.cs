@@ -115,7 +115,7 @@ public class GameManager : MonoBehaviourPun
             Debug.LogError("ОШИБКА: ghostPrefab не назначен в GameManager!");
             return;
         }
-        
+
         PhotonView pv = ghostPrefab.GetComponent<PhotonView>();
         if (pv == null)
         {
@@ -123,16 +123,16 @@ public class GameManager : MonoBehaviourPun
             Debug.LogError("Добавьте PhotonView на префаб Ghost в Resources!");
             return;
         }
-        
-        Vector3 randomPos = new Vector3(
+
+        Vector3 randomPos = transform.position + new Vector3(
             Random.Range(-spawnRange, spawnRange),
             1f,
             Random.Range(-spawnRange, spawnRange)
         );
-        
+
         PhotonNetwork.Instantiate(ghostPrefab.name, randomPos, Quaternion.identity, 0);
         ptsSent++;
-        
+
         Debug.Log($"Призрак создан: {ghostPrefab.name} в позиции {randomPos}");
     }
     

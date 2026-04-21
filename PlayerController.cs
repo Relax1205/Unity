@@ -2,6 +2,7 @@ using UnityEngine;
 using Photon.Pun;
 using UnityEngine.XR;
 using UnityEngine.SceneManagement;
+using System.Collections;
 
 [RequireComponent(typeof(Rigidbody))]
 public class PlayerController : CharacterBase, IPunObservable
@@ -40,23 +41,29 @@ public class PlayerController : CharacterBase, IPunObservable
     [Header("Animator System")]
     public Animator animator;
 
+    // ✅ НОВОЕ: Система оружия
+    [Header("Weapon System")]
+    public Transform weaponHolder;          // Контейнер для оружия (дочерний объект камеры)
+    public GameObject weaponModel;          // Префаб модели оружия
+    public float weaponSwayAmount = 0.02f;  // Сила покачивания оружия
+    public float weaponSwaySpeed = 8f;      // Скорость покачивания
+    private Vector3 weaponOriginalPos;      // Оригинальная позиция оружия
+    private Quaternion weaponOriginalRot;   // Оригинальная ротация оружия
+
     private PhotonView photonView;
     private bool isLocalPlayer = false;
-
     private UserDataPacket currentPTS;
     private UserDataPacket lastReceivedPTS;
     private float lastPTSUpdateTime = 0f;
-
     private int playerScore = 0;
 
     void Start()
     {
         rb.freezeRotation = true;
         moveSpeed = 8f;
-
         photonView = GetComponent<PhotonView>();
         isLocalPlayer = photonView.IsMine;
-
+        
         if (animator == null)
         {
             animator = GetComponent<Animator>();
@@ -64,7 +71,7 @@ public class PlayerController : CharacterBase, IPunObservable
 
         bool isVR = XRSettings.enabled;
         Debug.Log($"VR Status: {isVR}");
-
+        
         string currentScene = SceneManager.GetActiveScene().name;
         Debug.Log($"PlayerController.Start: Текущая сцена = {currentScene}");
 
@@ -82,6 +89,15 @@ public class PlayerController : CharacterBase, IPunObservable
                 transform.rotation = Quaternion.identity;
                 cameraTransform.localRotation = Quaternion.identity;
                 xRotation = 0f;
+
+                // ✅ НОВОЕ: Инициализация оружия
+                if (weaponHolder != null)
+                {
+                    weaponModel.SetActive(true);
+                    weaponOriginalPos = weaponHolder.localPosition;
+                    weaponOriginalRot = weaponHolder.localRotation;
+                    Debug.Log("Weapon System: Оружие инициализировано");
+                }
 
                 if (currentScene == "GameScene")
                 {
@@ -111,7 +127,13 @@ public class PlayerController : CharacterBase, IPunObservable
             }
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
-
+            
+            // ✅ НОВОЕ: Скрываем оружие у других игроков
+            if (weaponHolder != null)
+            {
+                weaponHolder.gameObject.SetActive(false);
+            }
+            
             if (rb != null)
             {
                 rb.isKinematic = true;
@@ -119,7 +141,7 @@ public class PlayerController : CharacterBase, IPunObservable
         }
 
         groundLayer = LayerMask.GetMask("Ground", "Default");
-
+        
         if (UIManager.Instance != null && isLocalPlayer)
         {
             UIManager.Instance.UpdateHealth(health, 100);
@@ -168,7 +190,7 @@ public class PlayerController : CharacterBase, IPunObservable
             stream.SendNext(currentPTS.isGrounded);
             stream.SendNext(currentPTS.currentJumps);
             stream.SendNext(currentPTS.timestamp);
-
+            
             if (Time.frameCount % 60 == 0)
             {
                 Debug.Log("PTS: Отправка пакета " + currentPTS.position);
@@ -198,7 +220,7 @@ public class PlayerController : CharacterBase, IPunObservable
                 isVacuumActive = vacuum;
                 isGrounded = grounded;
                 currentJumps = jumps;
-
+                
                 if (Time.frameCount % 60 == 0)
                 {
                     Debug.Log("PTS: Получен пакет от " + info.Sender + " | HP:" + hp);
@@ -243,14 +265,15 @@ public class PlayerController : CharacterBase, IPunObservable
 
     void Update()
     {
-        if (!isGameActive || !isLocalPlayer) return;
+        if (!isGameActive || !isLocalPlayer || UIManager.IsPaused) return;
 
         bool isVR = XRSettings.enabled;
+        
         if (!isVR)
         {
             HandleCameraRotation();
         }
-
+        
         Move(Vector3.zero);
         CheckGround();
 
@@ -280,12 +303,21 @@ public class PlayerController : CharacterBase, IPunObservable
         {
             TogglePause();
         }
+
+        // ✅ НОВОЕ: Покачивание оружия при движении
+        if (isLocalPlayer && weaponHolder != null && !isVR)
+        {
+            float swayX = Mathf.Sin(Time.time * weaponSwaySpeed) * weaponSwayAmount;
+            float swayY = Mathf.Cos(Time.time * weaponSwaySpeed * 0.7f) * weaponSwayAmount * 0.5f;
+            weaponHolder.localPosition = weaponOriginalPos + new Vector3(swayX, swayY, 0);
+        }
     }
 
     void CheckGround()
     {
         bool wasGrounded = isGrounded;
         isGrounded = Physics.Raycast(transform.position, Vector3.down, groundCheckDistance, groundLayer);
+        
         if (isGrounded && !wasGrounded)
         {
             currentJumps = 0;
@@ -296,6 +328,7 @@ public class PlayerController : CharacterBase, IPunObservable
     {
         float force = isSprinting ? sprintJumpForce : jumpForce;
         rb.AddForce(Vector3.up * force, ForceMode.Impulse);
+        
         if (jumpParticlePrefab != null)
         {
             Instantiate(jumpParticlePrefab, transform.position, Quaternion.identity);
@@ -319,16 +352,25 @@ public class PlayerController : CharacterBase, IPunObservable
         {
             animator.SetBool("IsVacuuming", true);
         }
+
         if (AudioManager.Instance != null)
         {
             AudioManager.Instance.StartVacuumSound();
         }
+
         if (vacuumParticlePrefab != null)
         {
             GameObject vfxObj = Instantiate(vacuumParticlePrefab, transform.position, transform.rotation);
             vfxObj.transform.SetParent(transform);
             activeVacuumVFX = vfxObj.GetComponent<ParticleSystem>();
         }
+
+        // ✅ НОВОЕ: Эффект отдачи при включении вакуума
+        if (weaponHolder != null)
+        {
+            StartCoroutine(WeaponRecoilEffect(0.1f, 0.05f));
+        }
+
         if (!destroyScheduled)
         {
             destroyScheduled = true;
@@ -342,18 +384,46 @@ public class PlayerController : CharacterBase, IPunObservable
         {
             animator.SetBool("IsVacuuming", false);
         }
+
         if (AudioManager.Instance != null)
         {
             AudioManager.Instance.StopVacuumSound();
         }
+
         if (activeVacuumVFX != null)
         {
             activeVacuumVFX.Stop();
             Destroy(activeVacuumVFX.gameObject, 2f);
             activeVacuumVFX = null;
         }
+
+        // ✅ НОВОЕ: Возврат оружия в исходное положение
+        if (weaponHolder != null)
+        {
+            StartCoroutine(WeaponRecoilEffect(-0.05f, 0.1f));
+        }
+
         CancelInvoke("DestroyGhost");
         destroyScheduled = false;
+    }
+
+    // ✅ НОВОЕ: Корутин для эффекта отдачи оружия
+    IEnumerator WeaponRecoilEffect(float targetZ, float duration)
+    {
+        if (weaponHolder == null) yield break;
+        
+        Vector3 startPos = weaponHolder.localPosition;
+        Vector3 endPos = startPos + new Vector3(0, 0, targetZ);
+        float t = 0;
+        
+        while (t < duration)
+        {
+            weaponHolder.localPosition = Vector3.Lerp(startPos, endPos, t / duration);
+            t += Time.deltaTime;
+            yield return null;
+        }
+        
+        weaponHolder.localPosition = endPos;
     }
 
     void UseVacuum()
@@ -375,6 +445,7 @@ public class PlayerController : CharacterBase, IPunObservable
         {
             AudioManager.Instance.PlayGhostDieSound();
         }
+
         Collider[] hits = Physics.OverlapSphere(transform.position, 5f);
         foreach (Collider hit in hits)
         {
@@ -400,19 +471,22 @@ public class PlayerController : CharacterBase, IPunObservable
         {
             base.TakeDamage(damage);
             SendDamagePTS(damage);
-
+            
             if (hitParticlePrefab != null)
             {
                 Instantiate(hitParticlePrefab, transform.position, Quaternion.identity);
             }
+            
             if (AudioManager.Instance != null)
             {
                 AudioManager.Instance.PlayHitSound();
             }
+            
             if (UIManager.Instance != null)
             {
                 UIManager.Instance.UpdateHealth(health, 100);
             }
+            
             if (health <= 0)
             {
                 GameOver();
@@ -443,6 +517,7 @@ public class PlayerController : CharacterBase, IPunObservable
     {
         Debug.Log($"PTS RPC: Счёт обновлён {playerScore} -> {newScore}");
         playerScore = newScore;
+        
         if (UIManager.Instance != null && isLocalPlayer)
         {
             UIManager.Instance.UpdateScore(playerScore);
@@ -452,6 +527,7 @@ public class PlayerController : CharacterBase, IPunObservable
     public void UpdateScore(int newScore)
     {
         playerScore = newScore;
+        
         if (photonView.IsMine)
         {
             photonView.RPC("UpdateScoreRPC", RpcTarget.All, newScore);
@@ -467,11 +543,13 @@ public class PlayerController : CharacterBase, IPunObservable
     void GameOver()
     {
         isGameActive = false;
+        
         if (isVacuumActive)
         {
             StopVacuum();
             isVacuumActive = false;
         }
+        
         if (UIManager.Instance != null)
         {
             UIManager.Instance.ShowGameOver();
@@ -490,6 +568,7 @@ public class PlayerController : CharacterBase, IPunObservable
     {
         Gizmos.color = Color.blue;
         Gizmos.DrawWireSphere(transform.position, 5f);
+        
         Gizmos.color = isGrounded ? Color.green : Color.red;
         Gizmos.DrawLine(transform.position, transform.position + Vector3.down * groundCheckDistance);
     }

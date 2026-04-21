@@ -22,6 +22,8 @@ public class UIManager : MonoBehaviour
     public TextMeshProUGUI finalScoreText;
     public TextMeshProUGUI highScoreText;
     
+    public static bool IsPaused { get; private set; } = false;
+
     void Awake()
     {
         if (Instance == null)
@@ -41,6 +43,8 @@ public class UIManager : MonoBehaviour
         
         Debug.Log("UIManager Start: Scene = " + SceneManager.GetActiveScene().name);
         Debug.Log("UIManager: AudioManager.Instance = " + (AudioManager.Instance != null ? "OK" : "NULL"));
+        
+        HideAllPanels();
         
         if (mainMenuPanel != null && SceneManager.GetActiveScene().name == "MainMenu")
         {
@@ -203,6 +207,7 @@ public class UIManager : MonoBehaviour
     public void PauseGame()
     {
         Debug.Log("UIManager: PauseGame called");
+        IsPaused = true;
         Time.timeScale = 0f;
         
         if (pausePanel != null) pausePanel.SetActive(true);
@@ -213,6 +218,7 @@ public class UIManager : MonoBehaviour
     public void ResumeGame()
     {
         Debug.Log("UIManager: ResumeGame called");
+        IsPaused = false;
         Time.timeScale = 1f;
         
         if (pausePanel != null) pausePanel.SetActive(false);
